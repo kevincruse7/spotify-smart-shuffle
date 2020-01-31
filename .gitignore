@@ -1,0 +1,5 @@
+# Python virtual environment
+.venv
+
+# VSCode local project files
+.vscode
