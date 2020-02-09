@@ -130,7 +130,7 @@ if token:
                     break
 
             # Determine candidates to follow current song
-            if (track_genre in tracks[track_index].genres
+            if ([genre for genre in genre_transitions[track_genre] if genre in tracks[track_index].genres]
                 and abs(shuffled_tracks[shuffle_index].energy - tracks[track_index].energy) < energy_threshold
                 and abs(shuffled_tracks[shuffle_index].valence - tracks[track_index].valence) < valence_threshold):
                 candidates.append(tracks[track_index])
@@ -147,19 +147,58 @@ if token:
                     break
 
             # Add selected track or grouping to new shuffled track list
-            if selected_tracks != None:
+            if selected_tracks:
                 shuffled_tracks += selected_tracks
-                for track in tracks:
-                    if track in selected_tracks:
+                for track in selected_tracks:
+                    if track in tracks:
                         tracks.remove(track)
                         shuffle_index += 1
             else:
                 shuffled_tracks.append(selected_track)
                 tracks.remove(selected_track)
         else:
+            residual_tracks = []
+            for track in tracks:
+                for shuffle_index in range(len(shuffled_tracks)):
+                    inserted = False
+                    
+                    # Determine genres of surrounding songs
+                    track_genres = []
+                    for genre in genre_transitions.keys():
+                        if genre in shuffled_tracks[shuffle_index].genres:
+                            track_genres.append(genre)
+                            break
+                    if shuffle_index < len(shuffled_tracks) - 1:
+                        for genre in genre_transitions.keys():
+                            if genre in shuffled_tracks[shuffle_index + 1].genres:
+                                track_genres.append(genre)
+                                break
+
+                    # Determine if song is a candidate to be placed between two current tracks
+                    if shuffle_index < len(shuffled_tracks) - 1:
+                        if ([genre for genre in genre_transitions[track_genres[0]] if genre in track.genres]
+                            and [genre for genre in genre_transitions[track_genres[1]] if genre in track.genres]
+                            and abs(shuffled_tracks[shuffle_index].energy - track.energy) < energy_threshold
+                            and abs(shuffled_tracks[shuffle_index + 1].energy - track.energy) < energy_threshold
+                            and abs(shuffled_tracks[shuffle_index].valence - track.valence) < valence_threshold
+                            and abs(shuffled_tracks[shuffle_index + 1].valence - track.valence) < valence_threshold):
+                            shuffled_tracks.insert(shuffle_index + 1, track)
+                            inserted = True
+                            break
+                    else:
+                        if ([genre for genre in genre_transitions[track_genres[0]] if genre in track.genres]
+                            and abs(shuffled_tracks[shuffle_index].energy - track.energy) < energy_threshold
+                            and abs(shuffled_tracks[shuffle_index].valence - track.valence) < valence_threshold):
+                            shuffled_tracks.insert(shuffle_index + 1, track)
+                            inserted = True
+                            break
+                if not inserted:
+                    residual_tracks.append(track)
+            shuffled_tracks += residual_tracks
             break
     
     for track in shuffled_tracks:
         print(track.name)
+    print(len(shuffled_tracks))
 else:
     print("Can't get token for " + username)
